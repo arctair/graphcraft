@@ -1,0 +1,5 @@
+#!/bin/zsh
+aws s3api create-bucket --acl public-read --bucket graphcraft.cruftbusters.com
+aws s3api put-bucket-policy --bucket graphcraft.cruftbusters.com --policy file://scripts/bucket-policy.json
+aws cloudfront create-distribution --distribution-config file://scripts/distribution-config.json
+aws route53 change-resource-record-sets --hosted-zone-id /hostedzone/Z2RH2FZB1VIOO8 --change-batch file://scripts/change-batch.json

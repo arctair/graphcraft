@@ -1,0 +1,54 @@
+{
+  "Aliases": {
+    "Quantity": 1,
+    "Items": ["graphcraft.cruftbusters.com"]
+  },
+  "DefaultRootObject": "index.html",
+  "Origins": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "graphcraft.cruftbusters.com.com.s3.amazonaws.com",
+        "DomainName": "graphcraft.cruftbusters.com.s3.amazonaws.com",
+        "CustomOriginConfig": {
+          "HTTPPort": 80,
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "http-only"
+        },
+        "ConnectionAttempts": 3,
+        "ConnectionTimeout": 10
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "graphcraft.cruftbusters.com.com.s3.amazonaws.com",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "AllowedMethods": {
+      "Quantity": 3,
+      "Items": ["GET", "HEAD", "OPTIONS"],
+      "CachedMethods": {
+        "Quantity": 3,
+        "Items": ["GET", "HEAD", "OPTIONS"]
+      }
+    },
+    "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  },
+  "ViewerCertificate": {
+    "ACMCertificateArn": "arn:aws:acm:us-east-1:552879364626:certificate/542457b4-52f7-4890-90aa-10feaebaf81d",
+    "SSLSupportMethod": "sni-only"
+  },
+  "CustomErrorResponses": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "ErrorCode": 404,
+        "ResponsePagePath": "/index.html",
+        "ResponseCode": "200",
+        "ErrorCachingMinTTL": 10
+      }
+    ]
+  },
+  "Comment": "",
+  "Enabled": true,
+  "CallerReference": "53c3aa5e-368f-46bd-9529-ac1e5fef4c25"
+}

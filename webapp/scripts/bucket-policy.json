@@ -1,0 +1,13 @@
+{
+  "Id": "Policy1646779864619",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Stmt1646779863255",
+      "Action": ["s3:GetObject"],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::graphcraft.cruftbusters.com/*",
+      "Principal": "*"
+    }
+  ]
+}
