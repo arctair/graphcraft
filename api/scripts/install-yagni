@@ -1,0 +1,14 @@
+#!/bin/zsh
+cat <<EOF | ssh yagni -T
+  pip install flask waitress --user
+
+  mkdir graphcraft
+  cd graphcraft
+  git init
+  git remote add -f origin https://github.com/arctair/graphcraft
+  git config core.sparseCheckout true
+  echo api >> .git/info/sparse-checkout
+  git pull origin main
+  ln -s $HOME/graphcraft/api/scripts/graphcraft.service $HOME/.config/systemd/user
+  systemctl enable graphcraft --user
+EOF

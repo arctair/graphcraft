@@ -1,0 +1,10 @@
+[Unit]
+Description=graphcraft
+
+[Service]
+ExecStart=/usr/bin/python -m waitress --port 8086 --call main.app:create_app
+Type=simple
+WorkingDirectory=/home/arctair/graphcraft/api
+
+[Install]
+WantedBy=default.target
