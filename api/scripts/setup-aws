@@ -1,0 +1,2 @@
+#!/bin/zsh
+aws route53 change-resource-record-sets --hosted-zone-id /hostedzone/Z2RH2FZB1VIOO8 --change-batch file://scripts/change-batch.json

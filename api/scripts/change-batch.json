@@ -1,0 +1,17 @@
+{
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "graphcraft-api.cruftbusters.com",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [
+          {
+            "Value": "d7p91vlml5qtf.cloudfront.net"
+          }
+        ]
+      }
+    }
+  ]
+}
