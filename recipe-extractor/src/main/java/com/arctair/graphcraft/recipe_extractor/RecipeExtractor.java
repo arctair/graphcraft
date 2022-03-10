@@ -1,101 +1,111 @@
 package com.arctair.graphcraft.recipe_extractor;
 
-import mezz.jei.api.IJeiRuntime;
-import mezz.jei.api.IModPlugin;
-import mezz.jei.api.JEIPlugin;
-import mezz.jei.api.ingredients.VanillaTypes;
-import mezz.jei.api.recipe.IIngredientType;
+import com.google.gson.stream.JsonWriter;
 import mezz.jei.api.recipe.IRecipeCategory;
 import mezz.jei.api.recipe.IRecipeWrapper;
 import mezz.jei.ingredients.Ingredients;
 import mezz.jei.plugins.vanilla.crafting.ShapedOreRecipeWrapper;
 import mezz.jei.plugins.vanilla.crafting.ShapedRecipesWrapper;
 import mezz.jei.recipes.RecipeRegistry;
-import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.fluids.FluidStack;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
+import java.io.PrintWriter;
 import java.text.MessageFormat;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.function.Supplier;
 
-@JEIPlugin
-@ParametersAreNonnullByDefault
-public class RecipeExtractor implements IModPlugin {
-    public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
-        try (
-                FileWriter fileWriter = new FileWriter(Minecraft.getMinecraft().mcDataDir + "/recipe-extractor.log");
-                BufferedWriter writer = new BufferedWriter(fileWriter)
-        ) {
-            RecipeRegistry registry = (RecipeRegistry) jeiRuntime.getRecipeRegistry();
-            for (IRecipeCategory<IRecipeWrapper> category : registry.getRecipeCategories()) {
-                writer.write(category.getTitle() + "\n");
-                for (IRecipeWrapper wrapper : registry.getRecipeWrappers(category)) {
-                    Ingredients ingredients = registry.getIngredients(wrapper);
+public class RecipeExtractor {
+    private final JsonWriter writer;
+    private final RecipeRegistry registry;
 
-                    writer.write(wrapperAsString(wrapper));
-                    writer.write("  input ingredients:\n");
-                    for (IIngredientType type : ingredients.getInputIngredients().keySet()) {
-                        writeIngredients(writer, ingredients.getInputs(type));
-                    }
-
-                    writer.write("  output ingredients:\n");
-                    writeIngredients(writer, ingredients.getOutputs(VanillaTypes.ITEM));
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public RecipeExtractor(JsonWriter writer, RecipeRegistry registry) {
+        this.writer = writer;
+        this.registry = registry;
     }
 
-    private static String wrapperAsString(IRecipeWrapper wrapper) {
+    public void writeRegistry() throws IOException {
+        writer.beginObject();
+        writer.name("categories").beginArray();
+        for (IRecipeCategory<IRecipeWrapper> category : registry.getRecipeCategories()) {
+            writeCategory(category);
+        }
+        writer.endArray();
+        writer.endObject();
+    }
+
+    private void writeCategory(IRecipeCategory<IRecipeWrapper> category) throws IOException {
+        writer.beginObject();
+        writer.name("title").value(category.getTitle());
+        writer.name("modName").value(category.getModName());
+        writer.name("uid").value(category.getUid());
+        writer.name("recipes").beginArray();
+        for (IRecipeWrapper wrapper : registry.getRecipeWrappers(category)) {
+            writeWrapper(wrapper);
+        }
+        writer.endArray();
+        writer.endObject();
+    }
+
+    private void writeWrapper(IRecipeWrapper wrapper) throws IOException {
+        writer.beginObject();
+
+        writer.name("type").value(wrapper.getClass().getSimpleName());
         if (wrapper instanceof ShapedRecipesWrapper) {
             ShapedRecipesWrapper shapedRecipesWrapper = (ShapedRecipesWrapper) wrapper;
-            return MessageFormat.format(
-                    " {0}: ({1}x{2}):\n",
-                    shapedRecipesWrapper.getClass(),
-                    shapedRecipesWrapper.getWidth(),
-                    shapedRecipesWrapper.getHeight()
-            );
+            writer.name("width").value(shapedRecipesWrapper.getWidth());
+            writer.name("height").value(shapedRecipesWrapper.getHeight());
         } else if (wrapper instanceof ShapedOreRecipeWrapper) {
             ShapedOreRecipeWrapper shapedOreRecipeWrapper = (ShapedOreRecipeWrapper) wrapper;
-            return MessageFormat.format(
-                    " {0}: ({1}x{2}):\n",
-                    shapedOreRecipeWrapper.getClass(),
-                    shapedOreRecipeWrapper.getWidth(),
-                    shapedOreRecipeWrapper.getHeight()
-            );
-        } else {
-            return MessageFormat.format(" {0}:\n", wrapper.getClass());
+            writer.name("width").value(shapedOreRecipeWrapper.getWidth());
+            writer.name("height").value(shapedOreRecipeWrapper.getHeight());
         }
+
+        Ingredients ingredients = registry.getIngredients(wrapper);
+        writeIngredients("inputIngredients", ingredients.getInputIngredients().values());
+        writeIngredients("outputIngredients", ingredients.getOutputIngredients().values());
+        writer.endObject();
     }
 
-    private static void writeIngredients(Writer writer, List options) throws IOException {
-        for (List option : (List<List>) options) {
-            writer.write("   slot:\n");
+    private void writeIngredients(String name, Collection<List> options) throws IOException {
+        writer.name(name).beginArray();
+        for (List option : options) {
+            writer.beginArray();
             for (Object ingredient : option) {
-                writeIngredient(writer, ingredient);
+                writeIngredient(ingredient);
             }
+            writer.endArray();
         }
+        writer.endArray();
     }
 
-    private static void writeIngredient(Writer writer, Object ingredient) throws IOException {
+    private void writeIngredient(Object ingredient) throws IOException {
+        if (ingredient == null) {
+            writer.nullValue();
+            return;
+        }
+
+        writer.beginObject();
+        writer.name("type").value(ingredient.getClass().getSimpleName());
         if (ingredient instanceof ItemStack) {
             ItemStack itemStack = (ItemStack) ingredient;
-            writer.write(
-                    MessageFormat.format(
-                            "    {0,number,#} * {1} ({2}:{3,number,#}):\n",
-                            itemStack.getCount(),
-                            itemStack.getDisplayName(),
-                            itemStack.getUnlocalizedName(),
-                            itemStack.getMetadata()
-                    )
-            );
-        } else {
-            writer.write("    " + ingredient + " (" + ingredient.getClass().getSimpleName() + "):\n");
+            writer.name("localizedName").value(itemStack.getDisplayName());
+            writer.name("unlocalizedName").value(itemStack.getUnlocalizedName());
+            if (itemStack.getCount() != 1) {
+                writer.name("count").value(itemStack.getCount());
+            }
+            if (itemStack.getMetadata() != 0) {
+                writer.name("metadata").value(itemStack.getMetadata());
+            }
+        } else if (ingredient instanceof FluidStack) {
+            FluidStack fluidStack = (FluidStack) ingredient;
+            writer.name("localizedName").value(fluidStack.getLocalizedName());
+            writer.name("unlocalizedName").value(fluidStack.getUnlocalizedName());
+            writer.name("amount").value(fluidStack.amount);
         }
+        writer.endObject();
     }
 }
