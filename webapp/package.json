@@ -22,7 +22,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "sync": "aws s3 sync build/ s3://graphcraft.cruftbusters.com/",
-    "invalidate": "aws cloudfront create-invalidation --distribution-id E1H3AYJX4UW537 --paths '/*'"
+    "invalidate": "aws cloudfront create-invalidation --distribution-id E1H3AYJX4UW537 --paths '/'"
   },
   "eslintConfig": {
     "extends": [
