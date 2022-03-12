@@ -34,17 +34,14 @@ function SearchIngredients() {
     } else {
       const searchTermLower = searchTerm.toLowerCase()
       setResults(
-        ingredients
-          .filter((ingredient) => ingredient !== undefined)
-          .filter(
-            (ingredient) =>
-              ingredient.displayName
-                .toLowerCase()
-                .indexOf(searchTermLower.toLowerCase()) > -1 ||
-              ingredient.unlocalizedName
-                .toLowerCase()
-                .indexOf(searchTermLower.toLowerCase()) > -1,
-          ),
+        ingredients.filter(
+          (ingredient) =>
+            ingredient.displayName.toLowerCase().indexOf(searchTermLower) >
+              -1 ||
+            ingredient.unlocalizedName
+              .toLowerCase()
+              .indexOf(searchTermLower) > -1,
+        ),
       )
     }
   }, [ingredients, searchTerm])
