@@ -50,17 +50,34 @@ function SearchIngredients() {
   }, [ingredients, searchTerm])
   return ingredients ? (
     <div
-      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
+      }}
     >
-      <div style={{ flex: '0 0 auto' }}>
-        Search names:{' '}
+      <div
+        style={{
+          flex: '0 0 auto',
+          backgroundColor: '#AFF',
+          padding: '0.25rem 1rem',
+        }}
+      >
         <input
+          placeholder="Search items"
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
-      <div style={{ flex: '1 1 auto', overflowY: 'auto' }}>
+      <div
+        style={{
+          flex: '1 1 auto',
+          overflowY: 'auto',
+          padding: '0.25rem 1rem',
+        }}
+      >
         {results.map((ingredient) => (
           <IngredientView
             key={ingredient.unlocalizedName}
