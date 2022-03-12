@@ -1,6 +1,7 @@
 import {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -19,7 +20,7 @@ interface IngredientWithCount {
   count: number
 }
 
-interface Wrapper {
+export interface Wrapper {
   type: string
   inputIngredients: Array<Array<IngredientWithCount>>
   outputIngredients: Array<Array<IngredientWithCount>>
@@ -37,11 +38,17 @@ export interface Recipes {
 interface RecipeContextValue {
   recipes?: Recipes
   ingredients: Array<Ingredient>
+  searchWrappersByOutputIngredient: (
+    ingredient: Ingredient,
+  ) => Map<string, Wrapper[]>
   error: string
 }
 const recipeContext = createContext<RecipeContextValue>({
   recipes: { categories: [] },
   ingredients: [],
+  searchWrappersByOutputIngredient: () => {
+    throw new Error('No recipe context provider')
+  },
   error: '',
 })
 
@@ -117,7 +124,42 @@ export function RecipesProvider({ children }: RecipesProviderProps) {
   }, [])
   return (
     <recipeContext.Provider
-      value={{ recipes, ingredients: ingredients, error }}
+      value={{
+        recipes,
+        ingredients,
+        searchWrappersByOutputIngredient: useCallback(
+          (ingredient) => {
+            const wrappersByCategory = new Map<string, Wrapper[]>()
+            recipes?.categories.forEach((category) => {
+              const wrappers: Wrapper[] = []
+              category.recipes.forEach((wrapper) => {
+                if (
+                  wrapper.outputIngredients
+                    .flat()
+                    .filter(
+                      (ingredient) =>
+                        ingredient !== null &&
+                        ingredient.unlocalizedName !== undefined,
+                    )
+                    .some(
+                      (ingredientWithCount) =>
+                        ingredientWithCount.unlocalizedName ===
+                        ingredient.unlocalizedName,
+                    )
+                ) {
+                  wrappers.push(wrapper)
+                }
+              })
+              if (wrappers.length > 0) {
+                wrappersByCategory.set(category.title, wrappers)
+              }
+            })
+            return wrappersByCategory
+          },
+          [recipes],
+        ),
+        error,
+      }}
       children={children}
     />
   )

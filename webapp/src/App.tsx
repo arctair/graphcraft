@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import {
   Ingredient,
   RecipesProvider,
   useRecipes,
+  Wrapper,
 } from './components/RecipesContext'
 
 export default function App() {
@@ -92,9 +93,90 @@ interface IngredientViewProps {
   ingredient: Ingredient
 }
 function IngredientView({ ingredient }: IngredientViewProps) {
-  return (
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [wrappersByCategoryTitle, setWrappersByCategoryTitle] = useState<
+    Map<string, Wrapper[]>
+  >(new Map())
+  const { searchWrappersByOutputIngredient } = useRecipes()
+  useEffect(() => {
+    if (!isExpanded) {
+      setWrappersByCategoryTitle(new Map())
+    } else {
+      const val = searchWrappersByOutputIngredient(ingredient)
+      setWrappersByCategoryTitle(val)
+    }
+  }, [searchWrappersByOutputIngredient, ingredient, isExpanded])
+  return ingredient === null ? (
+    <div>empty slot</div>
+  ) : (
     <div>
-      {ingredient.displayName} ({ingredient.unlocalizedName})
+      <div>
+        {ingredient.displayName} ({ingredient.unlocalizedName}){' '}
+        <button
+          onClick={() => setIsExpanded((isExpanded) => !isExpanded)}
+          style={{
+            backgroundColor: 'inherit',
+            color: 'gray',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          {isExpanded ? '\u25B2' : '\u25BC'}
+        </button>
+      </div>
+      {Array.from(wrappersByCategoryTitle.entries()).map(
+        ([categoryTitle, wrappers], i) => (
+          <Indent key={i}>
+            {categoryTitle}
+            {wrappers.map((wrapper, i) => (
+              <Indent key={i}>
+                {wrapper.type}
+                <Indent>
+                  Inputs:
+                  <Indent>
+                    {wrapper.inputIngredients.map((slot) => (
+                      <Indent>
+                        slot:
+                        <Indent>
+                          {slot.map((ingredient) => (
+                            <IngredientView ingredient={ingredient} />
+                          ))}
+                        </Indent>
+                      </Indent>
+                    ))}
+                  </Indent>
+                </Indent>
+                <Indent>
+                  Outputs:
+                  <Indent>
+                    {wrapper.outputIngredients.map((slot) => (
+                      <Indent>
+                        slot:
+                        <Indent>
+                          {slot.map((ingredient, i) => (
+                            <IngredientView
+                              key={i}
+                              ingredient={ingredient}
+                            />
+                          ))}
+                        </Indent>
+                      </Indent>
+                    ))}
+                  </Indent>
+                </Indent>
+              </Indent>
+            ))}
+          </Indent>
+        ),
+      )}
     </div>
   )
+}
+
+interface IndentProps {
+  paddingLeft?: string
+  children?: ReactNode
+}
+function Indent({ paddingLeft = '0.25rem', children }: IndentProps) {
+  return <div style={{ paddingLeft }} children={children} />
 }
