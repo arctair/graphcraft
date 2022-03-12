@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  Recipes,
+  Ingredient,
   RecipesProvider,
   useRecipes,
 } from './components/RecipesContext'
@@ -8,65 +8,79 @@ import {
 export default function App() {
   return (
     <RecipesProvider>
-      <SearchRecipes />
+      <Fanout />
     </RecipesProvider>
   )
 }
 
-function SearchRecipes() {
-  const { recipes, error } = useRecipes()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [results, setResults] = useState<Recipes>()
-  useEffect(() => {
-    if (!searchTerm) {
-      setResults(undefined)
-    } else {
-      setResults({
-        ...recipes,
-        categories: recipes.categories
-          .map((category) => ({
-            ...category,
-            recipes: category.recipes.filter((recipe) =>
-              recipe.outputIngredients.some((outputIngredient) =>
-                outputIngredient
-                  .flat()
-                  .some(
-                    (ingredient) =>
-                      ingredient?.displayName
-                        ?.toLowerCase()
-                        ?.indexOf(searchTerm.toLowerCase()) > -1,
-                  ),
-              ),
-            ),
-          }))
-          .filter((category) => category.recipes.length > 0),
-      })
-    }
-  }, [recipes, searchTerm])
+function Fanout() {
+  const { error } = useRecipes()
   return error ? (
     <div style={{ backgroundColor: 'red' }}>{error}</div>
-  ) : recipes ? (
-    <div>
-      <input
-        type="text"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      {results?.categories.map((category) => (
-        <div key={category.title}>
-          <h2>{category.title}</h2>
-          {category.recipes.map((recipe, i) => (
-            <div
-              key={`${category.title}-${i}`}
-              style={{ marginBottom: '0.25rem' }}
-            >
-              {JSON.stringify(recipe)}
-            </div>
-          ))}
-        </div>
-      ))}
+  ) : (
+    <>
+      <SearchIngredients />
+    </>
+  )
+}
+
+function SearchIngredients() {
+  const { ingredients } = useRecipes()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [results, setResults] = useState<Array<Ingredient>>([])
+  useEffect(() => {
+    if (!searchTerm || !ingredients) {
+      setResults(ingredients || [])
+    } else {
+      const searchTermLower = searchTerm.toLowerCase()
+      setResults(
+        ingredients
+          .filter((ingredient) => ingredient !== undefined)
+          .filter(
+            (ingredient) =>
+              ingredient.displayName
+                .toLowerCase()
+                .indexOf(searchTermLower.toLowerCase()) > -1 ||
+              ingredient.unlocalizedName
+                .toLowerCase()
+                .indexOf(searchTermLower.toLowerCase()) > -1,
+          ),
+      )
+    }
+  }, [ingredients, searchTerm])
+  return ingredients ? (
+    <div
+      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+    >
+      <div style={{ flex: '0 0 auto' }}>
+        Search names:{' '}
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+      <div style={{ flex: '1 1 auto', overflowY: 'auto' }}>
+        {results.map((ingredient) => (
+          <IngredientView
+            key={ingredient.unlocalizedName}
+            ingredient={ingredient}
+          />
+        ))}
+      </div>
     </div>
   ) : (
     <div>loading</div>
+  )
+}
+
+interface IngredientViewProps {
+  ingredient: Ingredient
+}
+function IngredientView({ ingredient }: IngredientViewProps) {
+  return (
+    <div>
+      {ingredient.displayName} ({ingredient.unlocalizedName})
+    </div>
   )
 }

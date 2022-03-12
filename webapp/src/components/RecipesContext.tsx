@@ -5,15 +5,24 @@ import {
   useEffect,
   useState,
 } from 'react'
-interface Ingredient {
+
+export interface Ingredient {
   type: string
   displayName: string
   unlocalizedName: string
 }
 
+interface IngredientWithCount {
+  type: string
+  displayName: string
+  unlocalizedName: string
+  count: number
+}
+
 interface Wrapper {
   type: string
-  outputIngredients: Array<Array<Ingredient>>
+  inputIngredients: Array<Array<IngredientWithCount>>
+  outputIngredients: Array<Array<IngredientWithCount>>
 }
 
 interface Category {
@@ -26,11 +35,13 @@ export interface Recipes {
 }
 
 interface RecipeContextValue {
-  recipes: Recipes
+  recipes?: Recipes
+  ingredients: Array<Ingredient>
   error: string
 }
 const recipeContext = createContext<RecipeContextValue>({
   recipes: { categories: [] },
+  ingredients: [],
   error: '',
 })
 
@@ -38,7 +49,9 @@ interface RecipesProviderProps {
   children: ReactNode
 }
 export function RecipesProvider({ children }: RecipesProviderProps) {
-  const [recipes, setRecipes] = useState<any>()
+  const [[recipes, ingredients], setRecipesAndIngredients] = useState<
+    [Recipes | undefined, Array<Ingredient>]
+  >([undefined, []])
   const [error, setError] = useState('')
   useEffect(() => {
     ;(async function () {
@@ -50,25 +63,76 @@ export function RecipesProvider({ children }: RecipesProviderProps) {
           `got status ${response.statusText} while fetching /recipes-v1.json`,
         )
       } else {
-        const recipes = await response.json()
-        setRecipes({
-          ...recipes,
-          categories: recipes.categories.filter(
-            (category: any, i: number) =>
-              recipes.categories
-                .map((category: any) => category.title)
-                .indexOf(category.title) === i,
-          ),
+        const ingredients = new Map<string, Ingredient>()
+        const recipes = uniqueCategories(await response.json())
+        recipes.categories.forEach((category) => {
+          category.recipes
+            .filter((recipe) => recipe !== null)
+            .forEach((recipe) => {
+              recipe.inputIngredients
+                .flat()
+                .filter(
+                  (ingredient) =>
+                    ingredient !== null &&
+                    ingredient.unlocalizedName !== undefined,
+                )
+                .map(
+                  (ingredient) =>
+                    ({
+                      type: ingredient.type,
+                      displayName: ingredient.displayName,
+                      unlocalizedName: ingredient.unlocalizedName,
+                    } as Ingredient),
+                )
+                .forEach((ingredient) =>
+                  ingredients.set(ingredient.unlocalizedName, ingredient),
+                )
+              recipe.outputIngredients
+                .flat()
+                .filter(
+                  (ingredient) =>
+                    ingredient !== null &&
+                    ingredient.unlocalizedName !== undefined,
+                )
+                .map(
+                  (ingredient) =>
+                    ({
+                      type: ingredient.type,
+                      displayName: ingredient.displayName,
+                      unlocalizedName: ingredient.unlocalizedName,
+                    } as Ingredient),
+                )
+                .forEach((ingredient) =>
+                  ingredients.set(ingredient.unlocalizedName, ingredient),
+                )
+            })
         })
+
+        setRecipesAndIngredients([
+          recipes,
+          Array.from(ingredients.values()),
+        ])
       }
     })()
   }, [])
   return (
     <recipeContext.Provider
-      value={{ recipes, error }}
+      value={{ recipes, ingredients: ingredients, error }}
       children={children}
     />
   )
+}
+
+function uniqueCategories(recipes: Recipes) {
+  return {
+    ...recipes,
+    categories: recipes.categories.filter(
+      (category: any, i: number) =>
+        recipes.categories
+          .map((category: any) => category.title)
+          .indexOf(category.title) === i,
+    ),
+  }
 }
 
 export function useRecipes() {
