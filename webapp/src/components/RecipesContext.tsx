@@ -35,8 +35,12 @@ export interface Recipes {
   categories: Array<Category>
 }
 
+const RecipesEmpty: Recipes = {
+  categories: [],
+}
+
 interface RecipeContextValue {
-  recipes?: Recipes
+  recipes: Recipes
   ingredients: Array<Ingredient>
   searchWrappersByOutputIngredient: (
     ingredient: Ingredient,
@@ -57,69 +61,20 @@ interface RecipesProviderProps {
 }
 export function RecipesProvider({ children }: RecipesProviderProps) {
   const [[recipes, ingredients], setRecipesAndIngredients] = useState<
-    [Recipes | undefined, Array<Ingredient>]
-  >([undefined, []])
+    [Recipes, Array<Ingredient>]
+  >([RecipesEmpty, []])
   const [error, setError] = useState('')
   useEffect(() => {
     ;(async function () {
-      const response = await fetch(
-        'https://graphcraft.cruftbusters.com/recipes-v1.json',
-      )
-      if (response.status < 200 || response.status > 299) {
-        setError(
-          `got status ${response.statusText} while fetching /recipes-v1.json`,
-        )
-      } else {
-        const ingredients = new Map<string, Ingredient>()
-        const recipes = uniqueCategories(await response.json())
-        recipes.categories.forEach((category) => {
-          category.recipes
-            .filter((recipe) => recipe !== null)
-            .forEach((recipe) => {
-              recipe.inputIngredients
-                .flat()
-                .filter(
-                  (ingredient) =>
-                    ingredient !== null &&
-                    ingredient.unlocalizedName !== undefined,
-                )
-                .map(
-                  (ingredient) =>
-                    ({
-                      type: ingredient.type,
-                      displayName: ingredient.displayName,
-                      unlocalizedName: ingredient.unlocalizedName,
-                    } as Ingredient),
-                )
-                .forEach((ingredient) =>
-                  ingredients.set(ingredient.unlocalizedName, ingredient),
-                )
-              recipe.outputIngredients
-                .flat()
-                .filter(
-                  (ingredient) =>
-                    ingredient !== null &&
-                    ingredient.unlocalizedName !== undefined,
-                )
-                .map(
-                  (ingredient) =>
-                    ({
-                      type: ingredient.type,
-                      displayName: ingredient.displayName,
-                      unlocalizedName: ingredient.unlocalizedName,
-                    } as Ingredient),
-                )
-                .forEach((ingredient) =>
-                  ingredients.set(ingredient.unlocalizedName, ingredient),
-                )
-            })
-        })
-
-        setRecipesAndIngredients([
-          recipes,
-          Array.from(ingredients.values()),
-        ])
+      const [recipesV1, error] = await getRecipesV1()
+      if (error) {
+        setError(error)
+        return
       }
+      const recipes = uniqueCategories(recipesV1)
+      const ingredients = getIngredients(recipes)
+
+      setRecipesAndIngredients([recipes, Array.from(ingredients.values())])
     })()
   }, [])
   return (
@@ -128,34 +83,11 @@ export function RecipesProvider({ children }: RecipesProviderProps) {
         recipes,
         ingredients,
         searchWrappersByOutputIngredient: useCallback(
-          (ingredient) => {
-            const wrappersByCategory = new Map<string, Wrapper[]>()
-            recipes?.categories.forEach((category) => {
-              const wrappers: Wrapper[] = []
-              category.recipes.forEach((wrapper) => {
-                if (
-                  wrapper.outputIngredients
-                    .flat()
-                    .filter(
-                      (ingredient) =>
-                        ingredient !== null &&
-                        ingredient.unlocalizedName !== undefined,
-                    )
-                    .some(
-                      (ingredientWithCount) =>
-                        ingredientWithCount.unlocalizedName ===
-                        ingredient.unlocalizedName,
-                    )
-                ) {
-                  wrappers.push(wrapper)
-                }
-              })
-              if (wrappers.length > 0) {
-                wrappersByCategory.set(category.title, wrappers)
-              }
-            })
-            return wrappersByCategory
-          },
+          (ingredients) =>
+            searchWrappersByOutputIngredient(
+              recipes || RecipesEmpty,
+              ingredients,
+            ),
           [recipes],
         ),
         error,
@@ -163,6 +95,19 @@ export function RecipesProvider({ children }: RecipesProviderProps) {
       children={children}
     />
   )
+}
+
+async function getRecipesV1() {
+  const response = await fetch(
+    'https://graphcraft.cruftbusters.com/recipes-v1.json',
+  )
+  if (response.status < 200 || response.status > 299) {
+    return [
+      null,
+      `got status ${response.statusText} while fetching /recipes-v1.json`,
+    ]
+  }
+  return [await response.json(), '']
 }
 
 function uniqueCategories(recipes: Recipes) {
@@ -175,6 +120,84 @@ function uniqueCategories(recipes: Recipes) {
           .indexOf(category.title) === i,
     ),
   }
+}
+
+function getIngredients(recipes: Recipes) {
+  const ingredients = new Map<string, Ingredient>()
+  recipes.categories.forEach((category) => {
+    category.recipes
+      .filter((recipe) => recipe !== null)
+      .forEach((recipe) => {
+        recipe.inputIngredients
+          .flat()
+          .filter(
+            (ingredient) =>
+              ingredient !== null &&
+              ingredient.unlocalizedName !== undefined,
+          )
+          .map(
+            (ingredient) =>
+              ({
+                type: ingredient.type,
+                displayName: ingredient.displayName,
+                unlocalizedName: ingredient.unlocalizedName,
+              } as Ingredient),
+          )
+          .forEach((ingredient) =>
+            ingredients.set(ingredient.unlocalizedName, ingredient),
+          )
+        recipe.outputIngredients
+          .flat()
+          .filter(
+            (ingredient) =>
+              ingredient !== null &&
+              ingredient.unlocalizedName !== undefined,
+          )
+          .map(
+            (ingredient) =>
+              ({
+                type: ingredient.type,
+                displayName: ingredient.displayName,
+                unlocalizedName: ingredient.unlocalizedName,
+              } as Ingredient),
+          )
+          .forEach((ingredient) =>
+            ingredients.set(ingredient.unlocalizedName, ingredient),
+          )
+      })
+  })
+  return ingredients
+}
+
+function searchWrappersByOutputIngredient(
+  recipes: Recipes,
+  ingredient: Ingredient,
+) {
+  return recipes.categories.reduce((results, category) => {
+    const wrappers = category.recipes.filter((wrapper) =>
+      wrapperHasOutputIngredient(wrapper, ingredient),
+    )
+    if (wrappers.length > 0) {
+      results.set(category.title, wrappers)
+    }
+    return results
+  }, new Map<string, Wrapper[]>())
+}
+
+function wrapperHasOutputIngredient(
+  wrapper: Wrapper,
+  ingredient: Ingredient,
+) {
+  return wrapper.outputIngredients
+    .flat()
+    .filter(
+      (ingredient) =>
+        ingredient !== null && ingredient.unlocalizedName !== undefined,
+    )
+    .some(
+      (ingredientWithCount) =>
+        ingredientWithCount.unlocalizedName === ingredient.unlocalizedName,
+    )
 }
 
 export function useRecipes() {
