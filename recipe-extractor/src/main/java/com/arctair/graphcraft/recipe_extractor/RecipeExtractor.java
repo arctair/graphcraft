@@ -4,22 +4,19 @@ import com.google.gson.stream.JsonWriter;
 import crazypants.enderio.base.integration.jei.energy.EnergyIngredient;
 import knightminer.inspirations.plugins.jei.cauldron.ingredient.DyeIngredient;
 import knightminer.inspirations.plugins.jei.cauldron.ingredient.PotionIngredient;
+import mezz.jei.api.recipe.IIngredientType;
 import mezz.jei.api.recipe.IRecipeCategory;
 import mezz.jei.api.recipe.IRecipeWrapper;
 import mezz.jei.ingredients.Ingredients;
-import mezz.jei.plugins.vanilla.crafting.ShapedOreRecipeWrapper;
-import mezz.jei.plugins.vanilla.crafting.ShapedRecipesWrapper;
 import mezz.jei.recipes.RecipeRegistry;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.text.MessageFormat;
-import java.util.Collection;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import java.util.Map;
+import java.util.function.Function;
 
 public class RecipeExtractor {
     private final JsonWriter writer;
@@ -58,16 +55,24 @@ public class RecipeExtractor {
         writer.name("type").value(wrapper.getClass().getSimpleName());
 
         Ingredients ingredients = registry.getIngredients(wrapper);
-        writeIngredients("inputIngredients", ingredients.getInputIngredients().values());
-        writeIngredients("outputIngredients", ingredients.getOutputIngredients().values());
+        writeIngredients("inputIngredients", getSlots(ingredients.getInputIngredients(), ingredients::getInputs));
+        writeIngredients("outputIngredients", getSlots(ingredients.getOutputIngredients(), ingredients::getOutputs));
         writer.endObject();
     }
 
-    private void writeIngredients(String name, Collection<List> options) throws IOException {
+    private List<List<Object>> getSlots(Map<IIngredientType, List> ingredientsByType, Function<IIngredientType, List<List<Object>>> getIngredientsByType) {
+        List<List<Object>> slots = new ArrayList<>();
+        for (IIngredientType type : ingredientsByType.keySet()) {
+            slots.addAll(getIngredientsByType.apply(type));
+        }
+        return slots;
+    }
+
+    private void writeIngredients(String name, List<List<Object>> slots) throws IOException {
         writer.name(name).beginArray();
-        for (List option : options) {
+        for (List slot : slots) {
             writer.beginArray();
-            for (Object ingredient : option) {
+            for (Object ingredient : slot) {
                 writeIngredient(ingredient);
             }
             writer.endArray();
