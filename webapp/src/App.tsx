@@ -37,11 +37,14 @@ function SearchIngredients() {
       setResults(
         ingredients.filter(
           (ingredient) =>
-            ingredient.displayName.toLowerCase().indexOf(searchTermLower) >
-              -1 ||
-            ingredient.unlocalizedName
-              .toLowerCase()
-              .indexOf(searchTermLower) > -1,
+            (ingredient.displayName &&
+              ingredient.displayName
+                .toLowerCase()
+                .indexOf(searchTermLower) > -1) ||
+            (ingredient.unlocalizedName &&
+              ingredient.unlocalizedName
+                .toLowerCase()
+                .indexOf(searchTermLower) > -1),
         ),
       )
     }
