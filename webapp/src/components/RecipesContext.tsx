@@ -1,7 +1,6 @@
 import {
   createContext,
   ReactNode,
-  useCallback,
   useContext,
   useEffect,
   useState,
@@ -31,24 +30,21 @@ export interface Recipes {
   categories: Array<Category>
 }
 
-const RecipesEmpty: Recipes = {
-  categories: [],
-}
+export type WrappersByCategoryTitle = Map<string, Wrapper[]>
+
+export type WrappersByCategoryTitleByID = Map<
+  string,
+  WrappersByCategoryTitle
+>
 
 interface RecipeContextValue {
-  recipes: Recipes
   ingredients: Array<Ingredient>
-  searchWrappersByOutputIngredient: (
-    ingredient: Ingredient,
-  ) => Map<string, Wrapper[]>
+  wrappersByCategoryTitleByID: WrappersByCategoryTitleByID
   error: string
 }
 const recipeContext = createContext<RecipeContextValue>({
-  recipes: { categories: [] },
   ingredients: [],
-  searchWrappersByOutputIngredient: () => {
-    throw new Error('No recipe context provider')
-  },
+  wrappersByCategoryTitleByID: new Map(),
   error: '',
 })
 
@@ -56,36 +52,37 @@ interface RecipesProviderProps {
   children: ReactNode
 }
 export function RecipesProvider({ children }: RecipesProviderProps) {
-  const [[recipes, ingredients], setRecipesAndIngredients] = useState<
-    [Recipes, Array<Ingredient>]
-  >([RecipesEmpty, []])
+  const [
+    [wrappersByCategoryTitleByID, ingredients],
+    setWrappersByCategoryTitleByIDAndIngredients,
+  ] = useState<[WrappersByCategoryTitleByID, Array<Ingredient>]>([
+    new Map(),
+    [],
+  ])
   const [error, setError] = useState('')
   useEffect(() => {
     ;(async function () {
-      const [recipesV2, error] = await getRecipesV2()
+      const [recipes, error] = await getRecipesV2()
       if (error) {
         setError(error)
         return
       }
-      const recipes = uniqueCategories(recipesV2)
       const ingredients = getIngredients(recipes)
+      const wrappersByCategoryTitleByID = getWrappersByCategoryTitleByID(
+        recipes,
+      )
 
-      setRecipesAndIngredients([recipes, Array.from(ingredients.values())])
+      setWrappersByCategoryTitleByIDAndIngredients([
+        wrappersByCategoryTitleByID,
+        Array.from(ingredients.values()),
+      ])
     })()
   }, [])
   return (
     <recipeContext.Provider
       value={{
-        recipes,
         ingredients,
-        searchWrappersByOutputIngredient: useCallback(
-          (ingredients) =>
-            searchWrappersByOutputIngredient(
-              recipes || RecipesEmpty,
-              ingredients,
-            ),
-          [recipes],
-        ),
+        wrappersByCategoryTitleByID,
         error,
       }}
       children={children}
@@ -104,18 +101,6 @@ async function getRecipesV2() {
     ]
   }
   return [await response.json(), '']
-}
-
-function uniqueCategories(recipes: Recipes) {
-  return {
-    ...recipes,
-    categories: recipes.categories.filter(
-      (category: any, i: number) =>
-        recipes.categories
-          .map((category: any) => category.title)
-          .indexOf(category.title) === i,
-    ),
-  }
 }
 
 function getIngredients(recipes: Recipes) {
@@ -144,38 +129,40 @@ function getIngredients(recipes: Recipes) {
           )
       })
   })
+  console.log('ingredients size', ingredients.size)
   return ingredients
 }
 
-function searchWrappersByOutputIngredient(
-  recipes: Recipes,
-  ingredient: Ingredient,
-) {
-  return recipes.categories.reduce((results, category) => {
-    const wrappers = category.wrappers.filter((wrapper) =>
-      wrapperHasOutputIngredient(wrapper, ingredient),
-    )
-    if (wrappers.length > 0) {
-      results.set(category.title, wrappers)
-    }
-    return results
-  }, new Map<string, Wrapper[]>())
-}
-
-function wrapperHasOutputIngredient(
-  wrapper: Wrapper,
-  ingredient: Ingredient,
-) {
-  return wrapper.outputSlots
-    .flat()
-    .filter(
-      (ingredient) =>
-        ingredient !== null && ingredient.unlocalizedName !== undefined,
-    )
-    .some(
-      (ingredientWithCount) =>
-        ingredientWithCount.unlocalizedName === ingredient.unlocalizedName,
-    )
+function getWrappersByCategoryTitleByID(recipes: Recipes) {
+  const wrappersByCategoryTitleByID = new Map() as WrappersByCategoryTitleByID
+  recipes.categories.forEach((category) => {
+    category.wrappers.forEach((wrapper) => {
+      wrapper.outputSlots.forEach((slot) => {
+        slot.forEach((ingredient) => {
+          const wrappersByCategoryTitle =
+            wrappersByCategoryTitleByID.get(ingredient.id) ||
+            (new Map() as WrappersByCategoryTitle)
+          const wrappersMatchingCategoryTitle =
+            wrappersByCategoryTitle.get(category.title) ||
+            new Array<Wrapper>()
+          wrappersMatchingCategoryTitle.push(wrapper)
+          wrappersByCategoryTitle.set(
+            category.title,
+            wrappersMatchingCategoryTitle,
+          )
+          wrappersByCategoryTitleByID.set(
+            ingredient.id,
+            wrappersByCategoryTitle,
+          )
+        })
+      })
+    })
+  })
+  console.log(
+    'wrappersByCategoryTitleByID size',
+    wrappersByCategoryTitleByID.size,
+  )
+  return wrappersByCategoryTitleByID
 }
 
 export function useRecipes() {

@@ -3,7 +3,7 @@ import {
   Ingredient,
   RecipesProvider,
   useRecipes,
-  Wrapper,
+  WrappersByCategoryTitle,
 } from './components/RecipesContext'
 
 export default function App() {
@@ -40,11 +40,11 @@ function SearchIngredients() {
             (ingredient.localizedName &&
               ingredient.localizedName
                 .toLowerCase()
-                .indexOf(searchTermLower) > -1) ||
+                .includes(searchTermLower)) ||
             (ingredient.unlocalizedName &&
               ingredient.unlocalizedName
                 .toLowerCase()
-                .indexOf(searchTermLower) > -1),
+                .includes(searchTermLower)),
         ),
       )
     }
@@ -94,18 +94,7 @@ interface IngredientViewProps {
 }
 function IngredientView({ ingredient }: IngredientViewProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [wrappersByCategoryTitle, setWrappersByCategoryTitle] = useState<
-    Map<string, Wrapper[]>
-  >(new Map())
-  const { searchWrappersByOutputIngredient } = useRecipes()
-  useEffect(() => {
-    if (!isExpanded) {
-      setWrappersByCategoryTitle(new Map())
-    } else {
-      const val = searchWrappersByOutputIngredient(ingredient)
-      setWrappersByCategoryTitle(val)
-    }
-  }, [searchWrappersByOutputIngredient, ingredient, isExpanded])
+  const { wrappersByCategoryTitleByID } = useRecipes()
   return ingredient === null ? (
     <div>empty slot</div>
   ) : (
@@ -124,51 +113,59 @@ function IngredientView({ ingredient }: IngredientViewProps) {
           {isExpanded ? '\u25B2' : '\u25BC'}
         </button>
       </div>
-      {Array.from(wrappersByCategoryTitle.entries()).map(
-        ([categoryTitle, wrappers], i) => (
-          <Indent key={i}>
-            {categoryTitle}
-            {wrappers.map((wrapper, i) => (
-              <Indent key={i}>
-                {wrapper.type}
-                <Indent>
-                  Inputs:
+      {isExpanded
+        ? Array.from(
+            (
+              wrappersByCategoryTitleByID.get(ingredient.id) ||
+              (new Map() as WrappersByCategoryTitle)
+            ).entries(),
+          ).map(([categoryTitle, wrappers], i) => (
+            <Indent key={i}>
+              {categoryTitle}
+              {wrappers.map((wrapper, i) => (
+                <Indent key={i}>
+                  {wrapper.type}
                   <Indent>
-                    {wrapper.inputSlots.map((slot) => (
-                      <Indent>
-                        slot:
-                        <Indent>
-                          {slot.map((ingredient) => (
-                            <IngredientView ingredient={ingredient} />
-                          ))}
+                    Inputs:
+                    <Indent>
+                      {wrapper.inputSlots.map((slot, i) => (
+                        <Indent key={i}>
+                          slot:
+                          <Indent>
+                            {slot.map((ingredient, i) => (
+                              <IngredientView
+                                key={i}
+                                ingredient={ingredient}
+                              />
+                            ))}
+                          </Indent>
                         </Indent>
-                      </Indent>
-                    ))}
+                      ))}
+                    </Indent>
+                  </Indent>
+                  <Indent>
+                    Outputs:
+                    <Indent>
+                      {wrapper.outputSlots.map((slot, i) => (
+                        <Indent key={i}>
+                          slot:
+                          <Indent>
+                            {slot.map((ingredient, i) => (
+                              <IngredientView
+                                key={i}
+                                ingredient={ingredient}
+                              />
+                            ))}
+                          </Indent>
+                        </Indent>
+                      ))}
+                    </Indent>
                   </Indent>
                 </Indent>
-                <Indent>
-                  Outputs:
-                  <Indent>
-                    {wrapper.outputSlots.map((slot) => (
-                      <Indent>
-                        slot:
-                        <Indent>
-                          {slot.map((ingredient, i) => (
-                            <IngredientView
-                              key={i}
-                              ingredient={ingredient}
-                            />
-                          ))}
-                        </Indent>
-                      </Indent>
-                    ))}
-                  </Indent>
-                </Indent>
-              </Indent>
-            ))}
-          </Indent>
-        ),
-      )}
+              ))}
+            </Indent>
+          ))
+        : undefined}
     </div>
   )
 }
