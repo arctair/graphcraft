@@ -37,8 +37,8 @@ function SearchIngredients() {
       setResults(
         ingredients.filter(
           (ingredient) =>
-            (ingredient.displayName &&
-              ingredient.displayName
+            (ingredient.localizedName &&
+              ingredient.localizedName
                 .toLowerCase()
                 .indexOf(searchTermLower) > -1) ||
             (ingredient.unlocalizedName &&
@@ -80,10 +80,7 @@ function SearchIngredients() {
         }}
       >
         {results.map((ingredient) => (
-          <IngredientView
-            key={ingredient.unlocalizedName}
-            ingredient={ingredient}
-          />
+          <IngredientView key={ingredient.id} ingredient={ingredient} />
         ))}
       </div>
     </div>
@@ -114,7 +111,7 @@ function IngredientView({ ingredient }: IngredientViewProps) {
   ) : (
     <div>
       <div>
-        {ingredient.displayName} ({ingredient.unlocalizedName}){' '}
+        {ingredient.localizedName} ({ingredient.id}){' '}
         <button
           onClick={() => setIsExpanded((isExpanded) => !isExpanded)}
           style={{
@@ -137,7 +134,7 @@ function IngredientView({ ingredient }: IngredientViewProps) {
                 <Indent>
                   Inputs:
                   <Indent>
-                    {wrapper.inputIngredients.map((slot) => (
+                    {wrapper.inputSlots.map((slot) => (
                       <Indent>
                         slot:
                         <Indent>
@@ -152,7 +149,7 @@ function IngredientView({ ingredient }: IngredientViewProps) {
                 <Indent>
                   Outputs:
                   <Indent>
-                    {wrapper.outputIngredients.map((slot) => (
+                    {wrapper.outputSlots.map((slot) => (
                       <Indent>
                         slot:
                         <Indent>

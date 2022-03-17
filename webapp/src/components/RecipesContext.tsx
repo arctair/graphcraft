@@ -8,27 +8,23 @@ import {
 } from 'react'
 
 export interface Ingredient {
+  id: string
   type: string
-  displayName: string
-  unlocalizedName: string
-}
-
-interface IngredientWithCount {
-  type: string
-  displayName: string
-  unlocalizedName: string
-  count: number
+  localizedName?: string
+  unlocalizedName?: string
+  metadata?: number
+  count?: number
 }
 
 export interface Wrapper {
   type: string
-  inputIngredients: Array<Array<IngredientWithCount>>
-  outputIngredients: Array<Array<IngredientWithCount>>
+  inputSlots: Array<Array<Ingredient>>
+  outputSlots: Array<Array<Ingredient>>
 }
 
 interface Category {
   title: string
-  recipes: Array<Wrapper>
+  wrappers: Array<Wrapper>
 }
 
 export interface Recipes {
@@ -66,12 +62,12 @@ export function RecipesProvider({ children }: RecipesProviderProps) {
   const [error, setError] = useState('')
   useEffect(() => {
     ;(async function () {
-      const [recipesV1, error] = await getRecipesV1()
+      const [recipesV2, error] = await getRecipesV2()
       if (error) {
         setError(error)
         return
       }
-      const recipes = uniqueCategories(recipesV1)
+      const recipes = uniqueCategories(recipesV2)
       const ingredients = getIngredients(recipes)
 
       setRecipesAndIngredients([recipes, Array.from(ingredients.values())])
@@ -97,14 +93,14 @@ export function RecipesProvider({ children }: RecipesProviderProps) {
   )
 }
 
-async function getRecipesV1() {
+async function getRecipesV2() {
   const response = await fetch(
-    'https://graphcraft.cruftbusters.com/recipes-v1.json',
+    'https://graphcraft.cruftbusters.com/recipes-v2.json',
   )
   if (response.status < 200 || response.status > 299) {
     return [
       null,
-      `got status ${response.statusText} while fetching /recipes-v1.json`,
+      `got status ${response.statusText} while fetching /recipes-v2.json`,
     ]
   }
   return [await response.json(), '']
@@ -125,44 +121,26 @@ function uniqueCategories(recipes: Recipes) {
 function getIngredients(recipes: Recipes) {
   const ingredients = new Map<string, Ingredient>()
   recipes.categories.forEach((category) => {
-    category.recipes
+    category.wrappers
       .filter((recipe) => recipe !== null)
       .forEach((recipe) => {
-        recipe.inputIngredients
+        recipe.inputSlots
           .flat()
           .filter(
             (ingredient) =>
-              ingredient !== null &&
-              ingredient.unlocalizedName !== undefined,
-          )
-          .map(
-            (ingredient) =>
-              ({
-                type: ingredient.type,
-                displayName: ingredient.displayName,
-                unlocalizedName: ingredient.unlocalizedName,
-              } as Ingredient),
+              ingredient !== null && ingredient.id !== undefined,
           )
           .forEach((ingredient) =>
-            ingredients.set(ingredient.unlocalizedName, ingredient),
+            ingredients.set(ingredient.id, ingredient),
           )
-        recipe.outputIngredients
+        recipe.outputSlots
           .flat()
           .filter(
             (ingredient) =>
-              ingredient !== null &&
-              ingredient.unlocalizedName !== undefined,
-          )
-          .map(
-            (ingredient) =>
-              ({
-                type: ingredient.type,
-                displayName: ingredient.displayName,
-                unlocalizedName: ingredient.unlocalizedName,
-              } as Ingredient),
+              ingredient !== null && ingredient.id !== undefined,
           )
           .forEach((ingredient) =>
-            ingredients.set(ingredient.unlocalizedName, ingredient),
+            ingredients.set(ingredient.id, ingredient),
           )
       })
   })
@@ -174,7 +152,7 @@ function searchWrappersByOutputIngredient(
   ingredient: Ingredient,
 ) {
   return recipes.categories.reduce((results, category) => {
-    const wrappers = category.recipes.filter((wrapper) =>
+    const wrappers = category.wrappers.filter((wrapper) =>
       wrapperHasOutputIngredient(wrapper, ingredient),
     )
     if (wrappers.length > 0) {
@@ -188,7 +166,7 @@ function wrapperHasOutputIngredient(
   wrapper: Wrapper,
   ingredient: Ingredient,
 ) {
-  return wrapper.outputIngredients
+  return wrapper.outputSlots
     .flat()
     .filter(
       (ingredient) =>
