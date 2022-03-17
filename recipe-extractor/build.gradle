@@ -96,6 +96,9 @@ dependencies {
 //    compile "mezz.jei:jei_1.12.2:4.15.0.291:api"
     // at runtime, use the full JEI jar
     compile "mezz.jei:jei_1.12.2:4.15.0.291"
+    String modpath = '/home/arctair/.local/share/multimc/instances/nomifactory-dev-ab57eb2-client/minecraft/mods'
+    implementation files("$modpath/Inspirations-1.12.2-0.2.9.jar")
+    implementation files("$modpath/EnderIO-1.12.2-5.3.70.jar")
 }
 
 // Example for how to get properties into the manifest for reading by the runtime..

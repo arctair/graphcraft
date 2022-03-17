@@ -17,8 +17,8 @@ import java.text.MessageFormat;
 @JEIPlugin
 @ParametersAreNonnullByDefault
 public class RecipeExtractorJEIPlugin implements IModPlugin {
-    private static final String resultPath = mcDataDir("/extractor-recipes.json");
-    private static final String errorLogPath = mcDataDir("/extractor-recipes.error.log");
+    private static final String resultPath = mcDataDir("/recipes-v1.json");
+    private static final String errorLogPath = mcDataDir("/recipes-v1.error.log");
 
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
         try (

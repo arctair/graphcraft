@@ -1,6 +1,9 @@
 package com.arctair.graphcraft.recipe_extractor;
 
 import com.google.gson.stream.JsonWriter;
+import crazypants.enderio.base.integration.jei.energy.EnergyIngredient;
+import knightminer.inspirations.plugins.jei.cauldron.ingredient.DyeIngredient;
+import knightminer.inspirations.plugins.jei.cauldron.ingredient.PotionIngredient;
 import mezz.jei.api.recipe.IRecipeCategory;
 import mezz.jei.api.recipe.IRecipeWrapper;
 import mezz.jei.ingredients.Ingredients;
@@ -52,17 +55,7 @@ public class RecipeExtractor {
 
     private void writeWrapper(IRecipeWrapper wrapper) throws IOException {
         writer.beginObject();
-
         writer.name("type").value(wrapper.getClass().getSimpleName());
-        if (wrapper instanceof ShapedRecipesWrapper) {
-            ShapedRecipesWrapper shapedRecipesWrapper = (ShapedRecipesWrapper) wrapper;
-            writer.name("width").value(shapedRecipesWrapper.getWidth());
-            writer.name("height").value(shapedRecipesWrapper.getHeight());
-        } else if (wrapper instanceof ShapedOreRecipeWrapper) {
-            ShapedOreRecipeWrapper shapedOreRecipeWrapper = (ShapedOreRecipeWrapper) wrapper;
-            writer.name("width").value(shapedOreRecipeWrapper.getWidth());
-            writer.name("height").value(shapedOreRecipeWrapper.getHeight());
-        }
 
         Ingredients ingredients = registry.getIngredients(wrapper);
         writeIngredients("inputIngredients", ingredients.getInputIngredients().values());
@@ -92,6 +85,7 @@ public class RecipeExtractor {
         writer.name("type").value(ingredient.getClass().getSimpleName());
         if (ingredient instanceof ItemStack) {
             ItemStack itemStack = (ItemStack) ingredient;
+            writer.name("displayName").value(itemStack.getDisplayName());
             writer.name("localizedName").value(itemStack.getDisplayName());
             writer.name("unlocalizedName").value(itemStack.getUnlocalizedName());
             if (itemStack.getCount() != 1) {
@@ -105,6 +99,20 @@ public class RecipeExtractor {
             writer.name("localizedName").value(fluidStack.getLocalizedName());
             writer.name("unlocalizedName").value(fluidStack.getUnlocalizedName());
             writer.name("amount").value(fluidStack.amount);
+        } else if (ingredient instanceof DyeIngredient) {
+            DyeIngredient dyeIngredient = (DyeIngredient) ingredient;
+            writer.name("dye").value(String.valueOf(dyeIngredient.getDye()));
+        } else if (ingredient instanceof PotionIngredient) {
+            PotionIngredient potionIngredient = (PotionIngredient) ingredient;
+            writer.name("potionType").value(String.valueOf(potionIngredient.getPotion()));
+        } else if (ingredient instanceof EnergyIngredient) {
+            EnergyIngredient energyIngredient = (EnergyIngredient) ingredient;
+            if (energyIngredient.hasAmount()) {
+                writer.name("amount").value(energyIngredient.getAmount());
+            }
+            writer.name("isPerTick").value(energyIngredient.isPerTick());
+        } else {
+            writer.name("canonicalName").value(ingredient.getClass().getCanonicalName());
         }
         writer.endObject();
     }
